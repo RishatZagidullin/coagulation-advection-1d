@@ -1,0 +1,1 @@
+enum errors{trying_to_subtract_matrices_of_different_sizes};
