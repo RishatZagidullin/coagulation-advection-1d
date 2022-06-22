@@ -8,62 +8,120 @@
 #include <cassert>
 #include <utility>
 #include "wrappers.h"
+#include <ctime>
+#include <cstdlib>
+#include <limits>
+#include <iterator>
+
 
 using namespace std;
 using namespace wrappers;
-#include <ctime>    // For time()
-#include <cstdlib>  // For srand() and rand()
 
+template<typename T>
+std::vector<T> split(const std::string& line) {
+    std::istringstream is(line);
+    return std::vector<T>(std::istream_iterator<T>(is), std::istream_iterator<T>());
+}
+
+//solve first Smoluchowski integral
 double L1(const int &N, const int &i, const double *n)
 {
     double l1 = 0;
     for (int i1 = 0; i1 < i; i1++)
     {
-        l1 += n[i1] * n[i - i1 - 1] * wrappers::K((i - i1 - 1) , i1 ,1);
+        l1 += n[i1] * n[i - i1 - 1] * wrappers::K((i - i1 - 1), i1, 1);
     }
     return l1;
 }
 
-
-
-
+//solve second Smoluchowski integral
 double L2(const int &N, const int &i, const double *n)
 {
     double l2 = 0;
     for (int i1 = 0; i1 < N; i1++)
     {
-        l2 += n[i1] * wrappers::K(i , i1,1);
+        l2 += n[i1] * wrappers::K(i, i1, 1);
     }
     return l2;
 }
 
+//solve tridiagonal linear system
 void solveMatrix (int n, double *a, double *c, double *b, double *f, double *x)
 {
     double m;
     for (int i = 1; i < n; i++)
     {
-        m = a[i]/c[i-1];
-        c[i] = c[i] - m*b[i-1];
-        f[i] = f[i] - m*f[i-1];
+        m = a[i] / c[i-1];
+        c[i] = c[i] - m * b[i-1];
+        f[i] = f[i] - m * f[i-1];
     }
     x[n-1] = f[n-1]/c[n-1];
 
     for (int i = n - 2; i >= 0; i--)
     {
-        x[i]=(f[i]-b[i]*x[i+1])/c[i];
+        x[i] = ( f[i] - b[i] * x[i+1] ) / c[i];
     }
 }
 
+//use this to solve for case D = 0, but bugged, fix later
+/*void only_advection_solver(double *&values, double const &dt, double *&coefs, int const &batch)
+{
+	double a, b;
+	double ** res = new double * [size];
+	for (int i = 0; i < size; i++) res[i] = new double [batch];
+	for (int m = 0; m < batch; m++)
+	{
+		res[0][m] = values[0 + m * size];
+		res[size - 1][m] = values[size - 1 + m * size];
+	}
+	for (int i = 1; i < size - 1; i++)
+    {
+		for (int m = 0; m < batch; m++)
+        {
+            b = values[i + 1 + m * size] - values[i - 1 + m * size];
+            if (( values[i + 1 + m * size] - values[i + m * size] ) * ( values[i + m * size]-values[ i - 1 + m * size] ) > 0)
+            {
+                double first_val = min(abs(b) / ( 2.0 * dr ), 2.0 * abs(values[i + 1 + m * size] - values[i + m * size]) / dr);
+                double second_val = 2.0 * abs(values[i + m * size] - values[i - 1 + m * size]) / dr;
+                a = min(first_val, second_val) * ( b >= 0 ? 1.0 : -1.0 );
+            }
+            else
+                a=0;
+            res[i][m] = values[i + m * size] + dr / 2.0 * ( 1.0 - coefs[m] * dt / dr ) * a;
+        }
+    }
+    for (int i = 1; i < size - 1; i++)
+        for(int m = 0; m < batch; m++)
+            values[i + m * size] = coefs[m] * ( ( res[i][m] - res[i - 1][m] ) / dr + sigma(dr * i, dr, PML, size) * values[i + m * size] );
+    for (int i = 0; i < size; i++)
+        delete [] res[i];
+    delete [] res;
+
+}*/
+
 int main(int argc, char ** argv)
 {
-    /*
+    ///*
     //res_full.txt
 
     double h = 1.0; 
     double dt = 0.01;
     double J = 1.0;
-    int TIME = 20000; 
+    int TIME = 20000;
     int MOD = 2000;
+    int max_particle_size = 256;
+    int max_x = 5000;
+    double dx = 0.02;
+    //*/
+
+    /*
+    //res_ballistic.txt
+
+    double h = 1.0; 
+    double dt = 0.001;
+    double J = 1.0;
+    int TIME = 50000;
+    int MOD = 5000;
     int max_particle_size = 256;
     int max_x = 5000;
     double dx = 0.02;
@@ -83,7 +141,7 @@ int main(int argc, char ** argv)
     */
 
     //res_diff.txt
-    
+    /*
     double h = 1.0;
     double dt = 0.1;
     double J = 1.0;
@@ -92,12 +150,14 @@ int main(int argc, char ** argv)
     int max_particle_size = 256;
     int max_x = 1000;
     double dx = 0.2;
+    */
 
     double tolerance = 1e-3;    			
     TCross_Parallel_v1 crossed_kernel = default_crossed_kernel(tolerance, max_particle_size, h);		
+
     //FFTW START
     double R_value = crossed_kernel.get_rank();
-    std::cout << R_value << std::endl;
+    std::cout << "rank is " << R_value << std::endl;
     double V_value = crossed_kernel.get_columns_number();
     fftw_complex *ub = (fftw_complex *) fftw_malloc(R_value * V_value * sizeof(fftw_complex));
     fftw_complex *vb = (fftw_complex *) fftw_malloc(R_value * V_value * sizeof(fftw_complex));
@@ -125,23 +185,24 @@ int main(int argc, char ** argv)
 
     for (int m = 0; m < max_particle_size; m++)
     {
-    
         //res_diff.txt
+        /*
         vel_coefs[m] = 0.0;
         dif_coefs[m] = 1.0;
-        
+        */
+
         /*
         //res_adv.txt
         vel_coefs[m] = 1.0;
         dif_coefs[m] = 1.0;
         */
-        /*
-        //res_full.txt
+
+        ///*
+        //res_full.txt or res_ballistic.txt
         vel_coefs[m] = 1.0*pow(m+1, 2./3.);
         dif_coefs[m] = 1.0*pow(m+1, -1./3.);
-        */
+        //*/
         
-        //std::cout << vel_coefs[m] << " " << dif_coefs[m] << std::endl;
     }
     double *coef_a = new double [max_x * max_particle_size];
     double *coef_b = new double [max_x * max_particle_size];
@@ -170,10 +231,31 @@ int main(int argc, char ** argv)
 
     clock_t start = clock();
     double duration;
-
+    const auto stream_max = std::numeric_limits<std::streamsize>::max();
     ofstream output;
-    if (argc !=2) {std::cout << "need output file name" << std::endl; return 2;}
-    output.open(argv[1]);
+    ifstream input;
+    if (argc !=3)
+    {
+        std::cout << "need output file name" << std::endl;
+        return 2;
+    }
+    int append = atoi(argv[2]);
+    if (append != 0){
+        input.open(argv[1]);
+        output.open(argv[1], std::ios_base::app);
+        for (int i = 0; i < append*max_x; i++)
+            input.ignore(stream_max, '\n');
+        std::string line;
+        int cc = 0;
+        while (std::getline(input, line)){
+            std::vector<double> vec = split<double>(line);
+            for (int m = 0; m < max_particle_size; m++)
+                initial_layer[m+max_particle_size*cc] = vec[m];
+            cc++;
+        }
+        input.close();
+    } else
+        output.open(argv[1]);
 
     for (int t = 0; t < TIME; t++)
     {
@@ -192,6 +274,7 @@ int main(int argc, char ** argv)
             
             //*****************************LOW RANK SOLUTION*************************************
             //clock_t st = clock();
+            /*
             L2_res_vec = crossed_kernel.matvec(n_k);
             L1_res_vec = crossed_kernel.smol_conv_discrete(n_k, ub, vb, plan_v, plan_u, plan_inverse);
 
@@ -208,18 +291,22 @@ int main(int argc, char ** argv)
 
             delete [] L2_res_vec;
             delete [] L1_res_vec;
+            */
             //duration = (clock() - st) / (double)CLOCKS_PER_SEC;
             //cout << "low rank duration = " << duration << endl;
             //***********************************************************************************
             
             //*******************************DIRECT SOLUTION*************************************
             //st = clock();
-            /*for (int m = 0; m < max_particle_size; m++)
+			///*
+            #pragma omp parallel for
+            for (int m = 0; m < max_particle_size; m++)
             {
             	int ind = m+x*max_particle_size;
                 smoluch_operator[ind] = ( L1(max_particle_size,m,n_k)*0.5-n_k[m]*L2(max_particle_size,m,n_k) )*dt+n_k[m];
                 if (smoluch_operator[ind] < 0.0) smoluch_operator[ind] = 0.0;
-            }*/
+            }
+			//*/
             //duration = (clock() - st) / (double)CLOCKS_PER_SEC;
             //cout << "direct duration = " << duration << endl;
             //***********************************************************************************
@@ -236,7 +323,7 @@ int main(int argc, char ** argv)
                 if (m==0 && x==0) rhs[x] = -J*dx*0.5;
                 
                 //remove this line if velocity is nonzero
-                else if (x==0) rhs[x] = 0.0;
+                //else if (x==0) rhs[x] = 0.0;
             }
             double * output = new double [max_x];
             solveMatrix (max_x, &coef_a[m*max_x], &coef_c[m*max_x], &coef_b[m*max_x], rhs, output);
