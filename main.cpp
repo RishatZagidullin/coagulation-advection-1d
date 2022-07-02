@@ -3,12 +3,10 @@
 #include <stdio.h>
 #include <iostream>
 #include <cmath>
-#include <time.h>
 #include <iomanip>
 #include <cassert>
 #include <utility>
 #include "wrappers.h"
-#include <ctime>
 #include <cstdlib>
 #include <limits>
 #include <iterator>
@@ -64,18 +62,18 @@ void solveMatrix (int n, double *a, double *c, double *b, double *f, double *x)
 
 int main(int argc, char ** argv)
 {
-    ///*
+    /*
     //res_full.txt
 
     double h = 1.0; 
     double dt = 0.01;
     double J = 1.0;
-    int TIME = 20000;
+    int TIME = 20001;
     int MOD = 2000;
     int max_particle_size = 256;
     int max_x = 5000;
     double dx = 0.02;
-    //*/
+    */
 
     /*
     //res_ballistic.txt
@@ -83,7 +81,7 @@ int main(int argc, char ** argv)
     double h = 1.0; 
     double dt = 0.001;
     double J = 1.0;
-    int TIME = 50000;
+    int TIME = 50001;
     int MOD = 5000;
     int max_particle_size = 256;
     int max_x = 5000;
@@ -96,7 +94,7 @@ int main(int argc, char ** argv)
     double h = 1.0; 
     double dt = 0.1;
     double J = 1.0;
-    int TIME = 5000; 
+    int TIME = 5001; 
     int MOD = 500;
     int max_particle_size = 128;
     int max_x = 1000;
@@ -104,16 +102,16 @@ int main(int argc, char ** argv)
     */
 
     //res_diff.txt
-    /*
+    ///*
     double h = 1.0;
-    double dt = 0.1;
+    double dt = 0.2;
     double J = 1.0;
-    int TIME = 20000; 
-    int MOD = 2000;
+    int TIME = 2001; 
+    int MOD = 200;
     int max_particle_size = 256;
-    int max_x = 1000;
-    double dx = 0.2;
-    */
+    int max_x = 500;
+    double dx = 0.4;
+    //*/
 
     double tolerance = 1e-3;    			
     TCross_Parallel_v1 crossed_kernel = default_crossed_kernel(tolerance, max_particle_size, h);		
@@ -192,8 +190,6 @@ int main(int argc, char ** argv)
         coef_c[(max_x-1) + m*max_x] = 1.0;
     }
 
-    clock_t start = clock();
-    double duration;
     const auto stream_max = std::numeric_limits<std::streamsize>::max();
     ofstream output;
     ifstream input;
@@ -222,7 +218,7 @@ int main(int argc, char ** argv)
 
     for (int t = 0; t < TIME; t++)
     {
-        cout << t << endl;
+        if (t%MOD==0) cout << t << "/" << TIME-1 << endl;
         //this is calculating coagulation
         for (int x = 0; x < max_x; x++)
         {
@@ -236,7 +232,6 @@ int main(int argc, char ** argv)
             
             
             //**************LOW RANK SOLUTION******************
-            //clock_t st = clock();
             /*
             L2_res_vec = crossed_kernel.matvec(n_k);
             L1_res_vec = crossed_kernel.smol_conv_discrete(n_k, ub, vb, plan_v, plan_u, plan_inverse);
@@ -255,13 +250,10 @@ int main(int argc, char ** argv)
             delete [] L2_res_vec;
             delete [] L1_res_vec;
             */
-            //duration = (clock() - st) / (double)CLOCKS_PER_SEC;
-            //cout << "low rank duration = " << duration << endl;
             //*************************************************
             
             //*****************DIRECT SOLUTION*****************
-            //st = clock();
-			///*
+            ///*
             #pragma omp parallel for
             for (int m = 0; m < max_particle_size; m++)
             {
@@ -269,10 +261,8 @@ int main(int argc, char ** argv)
                 smoluch_operator[ind] = ( L1(max_particle_size,m,n_k)*0.5-n_k[m]*L2(max_particle_size,m,n_k) )*dt+n_k[m];
                 if (smoluch_operator[ind] < 0.0) smoluch_operator[ind] = 0.0;
             }
-			//*/
-            //duration = (clock() - st) / (double)CLOCKS_PER_SEC;
-            //cout << "direct duration = " << duration << endl;
-            //**************************************************
+            //*/
+            //*************************************************
         }
 
         //this is part calculating advection
@@ -285,8 +275,8 @@ int main(int argc, char ** argv)
                 rhs[x] = smoluch_operator[m+x*max_particle_size];
                 if (m==0 && x==0) rhs[x] = -J*dx*0.5;
                 
-                //uncomment this line if res_diff.txt
-                //else if (x==0) rhs[x] = 0.0;
+                //uncomment this line if res_diff.txt else comment it
+                else if (x==0) rhs[x] = 0.0;
             }
             double * output = new double [max_x];
             solveMatrix (max_x, &coef_a[m*max_x], &coef_c[m*max_x], &coef_b[m*max_x], rhs, output);
@@ -321,8 +311,6 @@ int main(int argc, char ** argv)
             coef_c[(max_x-1) + m*max_x] = 1.0;
         }    
     }
-    duration = (clock() - start) / (double)CLOCKS_PER_SEC;
-    cout << "duration " << duration << endl;
 
     delete [] smoluch_operator;
     delete [] initial_layer;

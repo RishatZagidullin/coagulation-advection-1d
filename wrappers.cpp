@@ -6,17 +6,10 @@ namespace wrappers
 {
     double K(const int & u, const int &v, const double h)
     {
-        //just to see the rank of flux kernel
-        //double u1=pow( (u + 1.0) , 1.0/3.0);
-        //double v1=pow( (v + 1.0) , 1.0/3.0);
-        //double result = 4*3.1416*(1./u1 + 1./v1)*(v1 + u1);
-        //double mu = 1.0*(v1+u1)/(2*(1./u1 + 1./v1));
-        //result = result * (1 + 5./3.*mu + 1./3.*mu*mu) / (1 + 2./3.*mu);
-
         //simplified kernel for res_full.txt
-        double u1=pow( (u + 1.0) , 2.0/3.0);
-        double v1=pow( (v + 1.0) , 2.0/3.0);
-        double result = u1*v1;
+        //double u1=pow( (u + 1.0) , 2.0/3.0);
+        //double v1=pow( (v + 1.0) , 2.0/3.0);
+        //double result = u1*v1;
 
         //ballistic kernel for res_ballistic.txt
         //double u1=pow( (u + 1.0) , 1.0/3.0);
@@ -28,7 +21,7 @@ namespace wrappers
         //    result = pow((u1+v1), 2)*fabs(u1*u1-v1*v1);
         
         //kernel for res_diff.txt and res_adv.txt
-        //double result = 2.0;
+        double result = 2.0;
         return result;
     }
     //******************************************************************************************
