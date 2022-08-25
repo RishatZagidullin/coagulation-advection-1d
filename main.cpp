@@ -21,23 +21,23 @@ std::vector<T> split(const std::string& line) {
 }
 
 //solve first Smoluchowski integral
-double L1(const int &N, const int &i, const double *n)
+double L1(const int &N, const int &i, const double *n, double q)
 {
     double l1 = 0;
     for (int i1 = 0; i1 < i; i1++)
     {
-        l1 += n[i1] * n[i - i1 - 1] * wrappers::K((i - i1 - 1), i1, 1);
+        l1 += n[i1] * n[i - i1 - 1] * wrappers::K((i - i1 - 1), i1, 1)*(1.0 + q);
     }
     return l1;
 }
 
 //solve second Smoluchowski integral
-double L2(const int &N, const int &i, const double *n)
+double L2(const int &N, const int &i, const double *n, double q)
 {
     double l2 = 0;
     for (int i1 = 0; i1 < N; i1++)
     {
-        l2 += n[i1] * wrappers::K(i, i1, 1);
+        l2 += n[i1] * wrappers::K(i, i1, 1)*(1.0+q);
     }
     return l2;
 }
@@ -62,18 +62,18 @@ void solveMatrix (int n, double *a, double *c, double *b, double *f, double *x)
 
 int main(int argc, char ** argv)
 {
-    /*
+    ///*
     //res_full.txt
 
     double h = 1.0; 
-    double dt = 0.01;
+    double dt = 0.002;//0.002;//0.005
     double J = 1.0;
-    int TIME = 20001;
-    int MOD = 2000;
-    int max_particle_size = 256;
-    int max_x = 5000;
-    double dx = 0.02;
-    */
+    int TIME = 20001;//10000;//5000?
+    int MOD = 20;
+    int max_particle_size = 64;//64;//32
+    int max_x = 500;//1000;//500
+    double dx = 0.1;//0.05;//0.1
+    //*/
 
     /*
     //res_ballistic.txt
@@ -102,7 +102,7 @@ int main(int argc, char ** argv)
     */
 
     //res_diff.txt
-    ///*
+    /*
     double h = 1.0;
     double dt = 0.2;
     double J = 1.0;
@@ -111,7 +111,28 @@ int main(int argc, char ** argv)
     int max_particle_size = 256;
     int max_x = 500;
     double dx = 0.4;
-    //*/
+    */
+
+    //params for modelling Baikal data
+    double *I = new double[TIME];
+    std::ofstream check;
+    check.open(argv[3]);
+    for (int i = 0; i < TIME; i++)
+    {
+        I[i] = 0.5*exp(-0.0000005*(i-TIME/2)*(i-TIME/2));
+    }
+    //for (int i = TIME/2; i < TIME; i++)
+    //{
+    //    I[i] = 0.5*exp(-0.00001*(i-TIME/2-TIME/6)*(i-TIME/2-TIME/6));
+    //}
+    double alpha = 1.0;
+    double beta = 3.0;
+    double gamma = 5.0;
+    double q_max = 5.0;
+    double delta = 3.0;
+    double *ozone = new double[max_x];
+    double *q = new double[max_x];
+    //********************************
 
     double tolerance = 1e-3;    			
     TCross_Parallel_v1 crossed_kernel = default_crossed_kernel(tolerance, max_particle_size, h);		
@@ -119,6 +140,8 @@ int main(int argc, char ** argv)
     //FFTW START
     double R_value = crossed_kernel.get_rank();
     std::cout << "rank is " << R_value << std::endl;
+    std::cout << alpha << " " << beta << " " << gamma << "\n";
+    std::cout << argv[3] << std::endl;
     double V_value = crossed_kernel.get_columns_number();
     fftw_complex *ub = (fftw_complex *) fftw_malloc(R_value * V_value * sizeof(fftw_complex));
     fftw_complex *vb = (fftw_complex *) fftw_malloc(R_value * V_value * sizeof(fftw_complex));
@@ -146,11 +169,11 @@ int main(int argc, char ** argv)
 
     for (int m = 0; m < max_particle_size; m++)
     {
-        ///*
+        /*
         //res_diff.txt
         vel_coefs[m] = 0.0;
         dif_coefs[m] = 1.0;
-        //*/
+        */
 
         /*
         //res_adv.txt
@@ -158,11 +181,11 @@ int main(int argc, char ** argv)
         dif_coefs[m] = 1.0;
         */
 
-        /*
+        ///*
         //res_full.txt or res_ballistic.txt
         vel_coefs[m] = 1.0*pow(m+1, 2./3.);
         dif_coefs[m] = 1.0*pow(m+1, -1./3.);
-        */
+        //*/
         
     }
     double *coef_a = new double [max_x * max_particle_size];
@@ -193,11 +216,11 @@ int main(int argc, char ** argv)
     const auto stream_max = std::numeric_limits<std::streamsize>::max();
     ofstream output;
     ifstream input;
-    if (argc !=3)
-    {
-        std::cout << "need output file name" << std::endl;
-        return 2;
-    }
+    //if (argc !=3)
+    //{
+    //    std::cout << "need output file name" << std::endl;
+    //    return 2;
+    //}
     int append = atoi(argv[2]);
     if (append != 0){
         input.open(argv[1]);
@@ -226,9 +249,9 @@ int main(int argc, char ** argv)
             {
                 int ind = m+x*max_particle_size;
                 n_k[m] = initial_layer[ind];
-                if (t%MOD==0) output << initial_layer[ind] << " ";
+                if (t%MOD==0 && x%25==0) output << initial_layer[ind] << " ";
             }
-            if (t%MOD==0) output << std::endl;
+            if (t%MOD==0 && x%25==0) output << std::endl;
             
             
             //**************LOW RANK SOLUTION******************
@@ -258,7 +281,7 @@ int main(int argc, char ** argv)
             for (int m = 0; m < max_particle_size; m++)
             {
             	int ind = m+x*max_particle_size;
-                smoluch_operator[ind] = ( L1(max_particle_size,m,n_k)*0.5-n_k[m]*L2(max_particle_size,m,n_k) )*dt+n_k[m];
+                smoluch_operator[ind] = ( L1(max_particle_size,m,n_k,q[x])*0.5-n_k[m]*L2(max_particle_size,m,n_k,q[x]) )*dt+n_k[m];
                 if (smoluch_operator[ind] < 0.0) smoluch_operator[ind] = 0.0;
             }
             //*/
@@ -276,7 +299,7 @@ int main(int argc, char ** argv)
                 if (m==0 && x==0) rhs[x] = -J*dx*0.5;
                 
                 //uncomment this line if res_diff.txt else comment it
-                else if (x==0) rhs[x] = 0.0;
+                //else if (x==0) rhs[x] = 0.0;
             }
             double * output = new double [max_x];
             solveMatrix (max_x, &coef_a[m*max_x], &coef_c[m*max_x], &coef_b[m*max_x], rhs, output);
@@ -288,6 +311,25 @@ int main(int argc, char ** argv)
             delete [] output;
             delete [] rhs;
         }
+
+        //modelling Baikal data
+        for (int x = 0; x < max_x; x++)
+        {
+            double sums = 0.0;
+            for (int m = 0; m < max_particle_size; m++)
+            {
+                sums += initial_layer[m+x*max_particle_size]*pow(m, 2./3.);
+            }
+            ozone[x] = ozone[x]+dt*(I[t]-alpha*ozone[x]-beta*sums*ozone[x]);
+            if (t%MOD==0) check << ozone[x] << " ";
+            if (ozone[x] < 0.0)
+                ozone[x] = 0.0;
+            q[x] = q[x]+dt*(gamma*ozone[x]*(q_max-q[x])*(q[x]>=q_max?0.:q_max)-delta*q[x]);
+            if (q[x] < 0.0)
+                q[x] = 0.0;
+        }
+        if (t%MOD==0) check << "\n";
+        //************************
 
         //this is part of calculating advection
         #pragma omp parallel for
@@ -309,7 +351,7 @@ int main(int argc, char ** argv)
             coef_c[0 + m*max_x] = -1.0;
 
             coef_c[(max_x-1) + m*max_x] = 1.0;
-        }    
+        }
     }
 
     delete [] smoluch_operator;
@@ -320,6 +362,9 @@ int main(int argc, char ** argv)
     delete [] coef_a;
     delete [] coef_b;
     delete [] coef_c;
+    delete [] q;
+    delete [] ozone;
+    delete [] I;
 
     for (int i = 0; i < R_value; i++)
     {
@@ -328,6 +373,7 @@ int main(int argc, char ** argv)
         fftw_destroy_plan(plan_inverse[i]);	
     }
     output.close();
+    check.close();
     fftw_free(vb);
     fftw_free(ub);
     fftw_free(plan_u);

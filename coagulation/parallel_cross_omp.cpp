@@ -653,7 +653,7 @@ double *TCross_Parallel_v1::smol_conv(double * &x, VSLConvTaskPtr * &tasks)
         double *vb = (double *) malloc(R * N * sizeof(double));\
         double *tmp_res = (double *) malloc(R * N * sizeof(double));
         double *result = (double *) malloc(N * sizeof(double));
-#pragma omp parallel for collapse(2)
+        #pragma omp parallel for collapse(2)
         for (int r = 0; r < R; r++)
         {
 		for (int i = 0; i < N; i++)
@@ -662,7 +662,7 @@ double *TCross_Parallel_v1::smol_conv(double * &x, VSLConvTaskPtr * &tasks)
 			vb[i + r * N] = V[i + r * N] * x[i];
 		}
 	}
-#pragma omp parallel for
+        #pragma omp parallel for
         for (int r = 0; r < R; r++)
         {
 		status = vsldConvExec1D(tasks[r], ub + r * M, 1, vb + r * N, 1, tmp_res + r * N, 1);
@@ -731,7 +731,7 @@ double* TCross_Parallel_v1::matvec(double* &x, const char &option)
 	}
 	else if (option == 'p')
 	{
-#pragma omp parallel for
+                #pragma omp parallel for
 		for (int i = 0; i < M; i++)
 			result[i] = 0.0;
 		for (int i = 0; i < R; i++)
@@ -748,7 +748,7 @@ double* TCross_Parallel_v1::matvec(double* &x, const char &option)
 	}
 	else if (option == 'l')
 	{
-#pragma omp parallel for
+                #pragma omp parallel for
 		for (int i = 0; i < M; i++)
 			result[i] = 0.0;
 		for (int i = 0; i < R; i++)
@@ -764,7 +764,7 @@ double* TCross_Parallel_v1::matvec(double* &x, const char &option)
 	}
 	else if (option == 'u')
 	{
-#pragma omp parallel for
+                #pragma omp parallel for
 		for (int i = 0; i < M; i++)
 			result[i] = 0.0;
 		for (int i = 0; i < R; i++)
@@ -782,7 +782,7 @@ double* TCross_Parallel_v1::matvec(double* &x, const char &option)
 	}
 	else if (option == 'q')
 	{
-#pragma omp parallel for
+                #pragma omp parallel for
 		for (int i = 0; i < M; i++)
 			result[i] = 0.0;
 		for (int i = 0; i < R; i++)
