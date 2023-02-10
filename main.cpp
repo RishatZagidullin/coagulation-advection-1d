@@ -60,17 +60,39 @@ void solveMatrix (int n, double *a, double *c, double *b, double *f, double *x)
     }
 }
 
+void readData(double * data, int SIZE) {
+
+
+    std::string inFileName = "data/2_resampled.txt";
+    std::ifstream inFile;
+    inFile.open(inFileName.c_str());
+
+    if (inFile.is_open())
+    {
+        for (int i = 0; i < SIZE; i++)
+        {
+            inFile >> data[i];
+            //std::cout << data[i] << " ";
+        }
+
+        inFile.close(); // CLose input file
+    }
+    else { //Error message
+        cerr << "Can't find input file " << inFileName << endl;
+    }
+}
+
 int main(int argc, char ** argv)
 {
     ///*
     //res_full.txt
 
     double h = 1.0; 
-    double dt = 0.002;//0.002;//0.005
+    double dt = 0.001;//0.002;//0.005
     double J = 1.0;
-    int TIME = 20001;//10000;//5000?
+    int TIME = 20000;//10000;//5000?
     int MOD = 20;
-    int max_particle_size = 64;//64;//32
+    int max_particle_size = 128;//64;//32
     int max_x = 500;//1000;//500
     double dx = 0.1;//0.05;//0.1
     //*/
@@ -115,22 +137,39 @@ int main(int argc, char ** argv)
 
     //params for modelling Baikal data
     double *I = new double[TIME];
+    //readData(I, TIME);
     std::ofstream check;
     check.open(argv[3]);
     for (int i = 0; i < TIME; i++)
     {
-        I[i] = 0.5*exp(-0.0000005*(i-TIME/2)*(i-TIME/2));
+        //I[i] = I[i]/11.9;
+        I[i] = (sin(i*0.00035+0.5)+1.);
+        //I[i] = 0.5*exp(-0.000005*(i-TIME/2-TIME/17)*(i-TIME/2-TIME/17));
+        //I[i] += 0.333*exp(-0.0000005*(i-TIME/2+TIME/25)*(i-TIME/2+TIME/25));
     }
     //for (int i = TIME/2; i < TIME; i++)
     //{
     //    I[i] = 0.5*exp(-0.00001*(i-TIME/2-TIME/6)*(i-TIME/2-TIME/6));
     //}
-    double alpha = 1.0;
+    //64
+    double alpha = 5.0;
     double beta = 3.0;
-    double gamma = 5.0;
-    double q_max = 5.0;
-    double delta = 3.0;
+    double gamma = 10.0;
+    double q_max = 15.0;
+    double ksi = 35.0;
+    
+    //128
+    //double alpha = 1.0;
+    //double beta = 0.5;
+    //double gamma = 10.0;
+    //double q_max = 15.0;
+    //double ksi = 35.0;
+
+
     double *ozone = new double[max_x];
+    //double *ozone = new double[TIME];
+    //readData(ozone, TIME);
+    
     double *q = new double[max_x];
     //********************************
 
@@ -183,8 +222,8 @@ int main(int argc, char ** argv)
 
         ///*
         //res_full.txt or res_ballistic.txt
-        vel_coefs[m] = 1.0*pow(m+1, 2./3.);
-        dif_coefs[m] = 1.0*pow(m+1, -1./3.);
+        vel_coefs[m] = 1.*pow(m+1, 2./3.);
+        dif_coefs[m] = 1.*pow(m+1, -1./3.);
         //*/
         
     }
@@ -313,6 +352,8 @@ int main(int argc, char ** argv)
         }
 
         //modelling Baikal data
+        for(int gg = 0; gg < 1; gg++)
+        {
         for (int x = 0; x < max_x; x++)
         {
             double sums = 0.0;
@@ -324,9 +365,11 @@ int main(int argc, char ** argv)
             if (t%MOD==0) check << ozone[x] << " ";
             if (ozone[x] < 0.0)
                 ozone[x] = 0.0;
-            q[x] = q[x]+dt*(gamma*ozone[x]*(q_max-q[x])*(q[x]>=q_max?0.:q_max)-delta*q[x]);
+            q[x] = q[x]+dt*(gamma*ozone[x]*(q_max-q[x])*(q[x]>=q_max?0.:q_max)-ksi*q[x]);
+            //q[x] = q[x]+dt*(gamma*ozone[t]/11.9*(q_max-q[x])*(q[x]>=q_max?0.:q_max)-ksi*q[x]);
             if (q[x] < 0.0)
                 q[x] = 0.0;
+        }
         }
         if (t%MOD==0) check << "\n";
         //************************
