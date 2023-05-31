@@ -26,7 +26,7 @@ double L1(const int &N, const int &i, const double *n, double gamma_q, double h)
     double l1 = 0;
     for (int i1 = 0; i1 < i; i1++)
     {
-        double val = n[i1] * n[i-i1-1] * wrappers::K((i-i1-1), i1, 0.5);
+        double val = n[i1] * n[i-i1-1] * wrappers::K((i-i1-1), i1, h);
         if ((i-i1-1) != i1)
             val *= pow(1.0 + gamma_q, 5./3.);
         l1 += val;
@@ -69,7 +69,7 @@ void solveMatrix (int n, double *a, double *c, double *b, double *f, double *x)
 void readData(double * data, int SIZE) {
 
 
-    std::string inFileName = "data/1_resampled.txt";
+    std::string inFileName = "data/2_resampled.txt";
     std::ifstream inFile;
     inFile.open(inFileName.c_str());
 
@@ -78,12 +78,11 @@ void readData(double * data, int SIZE) {
         for (int i = 0; i < SIZE; i++)
         {
             inFile >> data[i];
-            //std::cout << data[i] << " ";
         }
 
-        inFile.close(); // CLose input file
+        inFile.close();
     }
-    else { //Error message
+    else {
         cerr << "Can't find input file " << inFileName << endl;
     }
 }
@@ -93,14 +92,14 @@ int main(int argc, char ** argv)
     ///*
     //res_full.txt
     double h = 0.5; 
-    double dt = 0.02;//0.002;//0.005
+    double dt = 0.02;
     double J = 1.0;
-    int TIME = 6500;//2*20000;//10000;//5000?
+    int TIME = 2000;//6500;
     int MOD = 1;
     int X_MOD=10;
-    int max_particle_size = 64;//128;//64;//32
-    int max_x = 200;//1000;//500
-    double dx = 0.5;//0.05;//0.1
+    int max_particle_size = 64;
+    int max_x = 200;
+    double dx = 0.5;
     //*/
 
     /*
@@ -143,15 +142,15 @@ int main(int argc, char ** argv)
 
     //params for modelling Baikal data
     double *I = new double[TIME];
-    readData(I, TIME);
+    //readData(I, TIME);
     //readData(I, TIME/2);
     //readData(I+TIME/2, TIME/2);
     std::ofstream check;
     check.open(argv[3]);
 
-    //for (int i = 0; i < TIME/2; i++)
-    //{
-    //    double value = ((double) i)/ ((double) (TIME/2));
+    for (int i = 0; i < TIME/2; i++)
+    {
+        double value = ((double) i)/ ((double) (TIME/2));
     //    I[i] = 0.6*exp(-pow(value-0.45, 2)/pow(0.065, 2))+0.4;
     //    I[i] += 0.5*exp(-pow(value-0.85, 2)/pow(0.18, 2));
     //    I[i] += 0.6*exp(-pow(value-0.0, 2)/pow(0.4, 2));
@@ -162,12 +161,12 @@ int main(int argc, char ** argv)
     //        I[i] += 0.39894228/((value-0.48)*5)*exp(-pow(log((value-0.48)*5)-mu, 2)/(2*sigma*sigma));
     //    }
         //sin(7x+0.5)+1
-        //I[i] = (sin(value*7+0.5)+1.);
-    //}
-    //for (int i = TIME/2; i < TIME; i++)
-    //{
-    //    double value = ((double) i-TIME/2)/ ((double) TIME/2);
-        //I[i] = (sin(value*7+0.5)+1.);
+        I[i] = (sin(value*7+0.5)+1.);
+    }
+    for (int i = TIME/2; i < TIME; i++)
+    {
+        double value = ((double) i-TIME/2)/ ((double) TIME/2);
+        I[i] = (sin(value*7+0.5)+1.);
     //    I[i] = 0.6*exp(-pow(value-0.45, 2)/pow(0.065, 2))+0.4;
     //    I[i] += 0.5*exp(-pow(value-0.85, 2)/pow(0.18, 2));
     //    I[i] += 0.6*exp(-pow(value-0.0, 2)/pow(0.4, 2));
@@ -177,7 +176,7 @@ int main(int argc, char ** argv)
     //        double mu = log(0.3)+sigma*sigma;
     //        I[i] += 0.39894228/((value-0.48)*5)*exp(-pow(log((value-0.48)*5)-mu, 2)/(2*sigma*sigma));
     //    }
-    //}
+    }
 
     //64 and gauss
     double alpha = 25.0;
@@ -266,8 +265,8 @@ int main(int argc, char ** argv)
 
         ///*
         //res_full.txt or res_ballistic.txt
-        vel_coefs[m] = 1.*pow(m+1, 2./3.);
-        dif_coefs[m] = 1.*pow(m+1, -1./3.);
+        vel_coefs[m] = 1.*pow(2*h*(m+1), 2./3.);
+        dif_coefs[m] = 1.*pow(2*h*(m+1), -1./3.);
         //*/
         
     }
@@ -328,7 +327,7 @@ int main(int argc, char ** argv)
         if (t%MOD==0) cout << t << " ";
         if (t%MOD==0) cout << q[0] << endl;
         //this is calculating coagulation
-        for (int numm = 0; numm < 20; numm ++)
+        for (int numm = 0; numm < 10; numm ++)
         {
         for (int x = 0; x < max_x; x++)
         {
@@ -336,9 +335,9 @@ int main(int argc, char ** argv)
             {
                 int ind = m+x*max_particle_size;
                 n_k[m] = initial_layer[ind];
-                if (t%MOD==0 && x%X_MOD==0 && numm==19) output << initial_layer[ind] << " ";
+                if (t%MOD==0 && x%X_MOD==0 && numm==9) output << initial_layer[ind] << " ";
             }
-            if (t%MOD==0 && x%X_MOD==0 && numm ==19) output << std::endl;
+            if (t%MOD==0 && x%X_MOD==0 && numm ==9) output << std::endl;
             
             
             //**************LOW RANK SOLUTION******************
@@ -368,7 +367,7 @@ int main(int argc, char ** argv)
             for (int m = 0; m < max_particle_size; m++)
             {
             	int ind = m+x*max_particle_size;
-            	if (numm == 19)
+            	if (numm == 9)
             	{
                     smoluch_operator[ind] = ( L1(max_particle_size,m,n_k,gamma*q[x], h)*0.5-n_k[m]*L2(max_particle_size,m,n_k,gamma*q[x], h) )*dt+n_k[m];
                     if (smoluch_operator[ind] < 0.0) smoluch_operator[ind] = 0.0;
@@ -425,15 +424,9 @@ int main(int argc, char ** argv)
             if (ozone[x] < 0.0)
                 ozone[x] = 0.0;
             q[x] = q[x]+dt*(kai*ozone[x]*(q_max-q[x])*(q[x]>=q_max?0.:1)-ksi*q[x]);
-            //std::cout << "x: " << x << "\n";
-            //std::cout << "sums: " << sums << "\n";
-            //std::cout << "I: " << I[t] << "\n";
-            //std::cout << "ozone: " << ozone[x] << "\n";
-            //std::cout << "q[x]: " << q[x] << "\n";
-            //std::cout << "++++++++++++++++++++++++++++\n\n";
+
             if (sums < 0 || q[x] > 100)
                 return 0;
-            //q[x] = q[x]+dt*(kai*ozone[t]/11.9*(q_max-q[x])*(q[x]>=q_max?0.:q_max)-ksi*q[x]);
             if (q[x] < 0.0)
                 q[x] = 0.0;
         }
