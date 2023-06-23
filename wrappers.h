@@ -13,17 +13,6 @@
 using namespace std;
 namespace wrappers
 {
-
-	double K(const int & u, const int &v, const double h);
-
-  class TKernel: public TMatrix
-	{
-		public:
-               	double h;
-               	TKernel (const int &m, const int &n) : TMatrix(m , n) {}
-		double value (const int &i, const int &j) override {return h*K(i,j,h);}
-	};
-
-	TCross_Parallel_v1 default_crossed_kernel(const double & tolerance, const int & size, const double & dm);
+    double K(const int & u, const int &v, const double h);
 }
 
