@@ -69,7 +69,12 @@ void solveMatrix (int n, double *a, double *c, double *b, double *f, double *x)
 void readData(double * data, int SIZE) {
 
 
-    std::string inFileName = "data/1_resampled.txt";
+    // 23 july direct 
+    std::string inFileName = "data/23_resampled.txt";
+    // 25 july direct
+    //std::string inFileName = "data/25_resampled.txt";
+    // 3 days direct
+    //std::string inFileName = "data/3_resampled.txt";
     std::ifstream inFile;
     inFile.open(inFileName.c_str());
 
@@ -90,48 +95,59 @@ void readData(double * data, int SIZE) {
 
 int main(int argc, char ** argv)
 {
-    ///*
-    //res_full.txt
-    double h = 1.; 
+    //res_baikal.txt
+    double h = 1.0; 
     double dt = 0.02;
     double J = 1.0;
-    int TIME = 8500;//1800;//6500;
+
+    //direct 23 july
+    //int TIME = 1800;
+    //25 july, smooth 23 july
+    int TIME = 2000;
+    //3 days
+    //int TIME = 8500;
+
     int MOD = 1;
     int X_MOD=10;
     int max_particle_size = 40;
     int max_x = 200;
     double dx = 0.5;
-    //*/
 
-    //params for modelling Baikal data
+    //smooth 23 july
+    max_particle_size = 80;
+    h = 0.5;
+
     double *I = new double[TIME];
-    readData(I, TIME);
+
+    //23 july direct
     //readData(I, 800);
     //readData(I+800, TIME-800);
+    //25 july direct
+    //readData(I, TIME/2);
+    //readData(I+TIME/2, TIME/2);
+    //3 days direct
+    //readData(I, TIME);
+
     std::ofstream check;
     check.open(argv[3]);
 
-    //for (int i = 0; i < TIME/2; i++)
-    //{
-    //    double value = ((double) i)/ ((double) (TIME/2-1));
-        //26sin(7x+0.9)+70
+    for (int i = 0; i < TIME/2; i++)
+    {
+        double value = ((double) i)/ ((double) (TIME/2-1));
+        //23 july smooth
+        I[i] = 2.5*sin(3.141592654*value/2.+3.141592654/2.) + 0.54037054444 + 2.28;
+        //25 july smooth
         //I[i] = 1.*(sin(value*7*0.897597901+0.9)+2.);
-        //36sin(6.8x-1)+90
-        //I[i] = 1.2* (sin(value*6.8*0.923997839 - 0.6) + 2.2);
-        //
-    //    I[i] = 2.5*sin(3.141592654*value/2.+3.141592654/2.)
-    //           + 0.54037054444 + 2.28;
-    //}
-    //for (int i = TIME/2; i < TIME; i++)
-    //{
-    //    double value = ((double) i-TIME/2)/ ((double) (TIME/2));
-    //    double value_x = value < 0.3 ? 0.3 : value;
+    }
+    for (int i = TIME/2; i < TIME; i++)
+    {
+        double value = ((double) i-TIME/2)/ ((double) (TIME/2));
+        //23 july smooth
+        double value_x = value < 0.3 ? 0.3 : value;
+        I[i] = (value_x+0.5)*sin(value*9.0 + 2.4) + 2.28;
+        //25 july smooth
         //I[i] = 1.*(sin(value*7*0.897597901+0.9)+2.);
-        //36sin(6.8x-1)+90
-        //I[i] = 1.2* (sin(value*6.8*0.923997839 - 0.6) + 2.2);
-        //
-    //    I[i] = (value_x+0.5)*sin(value*9.0 + 2.4) + 2.28;
-    //}
+    }
 
     double alpha = 25.0;
     double beta = 10.0;
@@ -158,7 +174,10 @@ int main(int argc, char ** argv)
     for (int m = 0; m < max_particle_size; m++)
     {
         vel_coefs[m] = 1.0*pow(h*(m+1), 2./3.);
-        dif_coefs[m] = 1.0*pow(h*(m+1), -1./3.);
+        double dif_coef = 1.;
+        //smooth 23 july
+        dif_coef = 1.5;
+        dif_coefs[m] = dif_coef*pow(h*(m+1), -1./3.);
         
     }
     double *coef_a = new double [max_x * max_particle_size];
@@ -170,9 +189,10 @@ int main(int argc, char ** argv)
         for (int x = 0; x < max_x; x++)
         {
             int ind = x + m * max_x;
-            coef_b[ind] = - dt * dif_coefs[m] * exp(-vel_coefs[m]/dif_coefs[m]*dx/2.0) / (dx*dx);
-            coef_c[ind] = 1.0 + dt * ( dif_coefs[m] * exp(vel_coefs[m]/dif_coefs[m]*dx/2.0) + dif_coefs[m] * exp(-vel_coefs[m]/dif_coefs[m]*dx/2.0) ) / (dx*dx);
-            coef_a[ind] = - dt * dif_coefs[m] * exp(vel_coefs[m]/dif_coefs[m]*dx/2.0) / (dx*dx);
+            coef_b[ind] = - dt*dif_coefs[m]*exp(-vel_coefs[m]/dif_coefs[m]*dx/2.0) / (dx*dx);
+            coef_c[ind] = 1.0 + dt*( dif_coefs[m]*exp(vel_coefs[m]/dif_coefs[m]*dx/2.0) +
+                                     dif_coefs[m]*exp(-vel_coefs[m]/dif_coefs[m]*dx/2.0) ) / (dx*dx);
+            coef_a[ind] = - dt*dif_coefs[m]*exp(vel_coefs[m]/dif_coefs[m]*dx/2.0) / (dx*dx);
         }
 
         coef_b[0 + m*max_x] = 1.0;
@@ -214,37 +234,40 @@ int main(int argc, char ** argv)
         if (t%MOD==0) cout << q[0] << " " << q[max_x/2] << " " << q[max_x-1] << endl;
         //this is calculating coagulation
         int mmm = 15;
+        //smooth 23 july
+        mmm = 6;
         for (int numm = 0; numm < mmm; numm ++)
         {
-        for (int x = 0; x < max_x; x++)
-        {
-            for (int m = 0; m < max_particle_size; m++)
+            for (int x = 0; x < max_x; x++)
             {
-                int ind = m+x*max_particle_size;
-                n_k[m] = initial_layer[ind];
-                if (t%MOD==0 && x%X_MOD==0 && numm==mmm-1) output << initial_layer[ind] << " ";
-            }
-            if (t%MOD==0 && x%X_MOD==0 && numm ==mmm-1) output << std::endl;
-            
-            //*****************DIRECT SOLUTION*****************
-            #pragma omp parallel for
-            for (int m = 0; m < max_particle_size; m++)
-            {
-            	int ind = m+x*max_particle_size;
-            	if (numm == mmm-1)
-            	{
-                    smoluch_operator[ind] = ( L1(max_particle_size,m,n_k,gamma*q[x], h)*0.5-n_k[m]*L2(max_particle_size,m,n_k,gamma*q[x], h) )*dt+n_k[m];
-                    if (smoluch_operator[ind] < 0.0) smoluch_operator[ind] = 0.0;
-                }
-                else
+                for (int m = 0; m < max_particle_size; m++)
                 {
-                    initial_layer[ind] = ( L1(max_particle_size,m,n_k,gamma*q[x], h)*0.5-n_k[m]*L2(max_particle_size,m,n_k,gamma*q[x], h) )*dt+n_k[m];
-                    if (initial_layer[ind] < 0.0) initial_layer[ind] = 0.0;
-
+                    int ind = m+x*max_particle_size;
+                    n_k[m] = initial_layer[ind];
+                    if (t%MOD==0 && x%X_MOD==0 && numm==mmm-1) output << initial_layer[ind] << " ";
                 }
+                if (t%MOD==0 && x%X_MOD==0 && numm ==mmm-1) output << std::endl;
+            
+                //*****************DIRECT SOLUTION*****************
+                #pragma omp parallel for
+                for (int m = 0; m < max_particle_size; m++)
+                {
+                    int ind = m+x*max_particle_size;
+            	    if (numm == mmm-1)
+            	    {
+                        smoluch_operator[ind] = ( L1(max_particle_size,m,n_k,gamma*q[x], h)*0.5 - 
+                                                  n_k[m]*L2(max_particle_size,m,n_k,gamma*q[x], h) )*dt+n_k[m];
+                        if (smoluch_operator[ind] < 0.0) smoluch_operator[ind] = 0.0;
+                    }
+                    else
+                    {
+                        initial_layer[ind] = ( L1(max_particle_size,m,n_k,gamma*q[x], h)*0.5 - 
+                                               n_k[m]*L2(max_particle_size,m,n_k,gamma*q[x], h) )*dt+n_k[m];
+                        if (initial_layer[ind] < 0.0) initial_layer[ind] = 0.0;
+                    }
+                }
+                //*************************************************
             }
-        }
-            //*************************************************
         }
 
         //this is part calculating advection
@@ -256,7 +279,6 @@ int main(int argc, char ** argv)
             {
                 rhs[x] = smoluch_operator[m+x*max_particle_size];
                 if (m==0 && x==0) rhs[x] = -J*dx*0.5;
-                //else if (x==0) rhs[x] = 0.0;
             }
             double * output = new double [max_x];
             solveMatrix (max_x, &coef_a[m*max_x], &coef_c[m*max_x], &coef_b[m*max_x], rhs, output);
@@ -271,8 +293,6 @@ int main(int argc, char ** argv)
         }
 
         //modelling Baikal data
-        for(int gg = 0; gg < 1; gg++)
-        {
         for (int x = 0; x < max_x; x++)
         {
             double sums = 0.0;
@@ -290,7 +310,6 @@ int main(int argc, char ** argv)
                 return 0;
             if (q[x] < 0.0)
                 q[x] = 0.0;
-        }
         }
         if (t%MOD==0) check << "\n";
         //************************
