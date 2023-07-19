@@ -1,0 +1,6 @@
+smooth_23_july
+2000		//TIME
+80		//max_particle_size
+0.5		//h
+6		//num_smol
+1.5		//dif_coef

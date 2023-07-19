@@ -1,0 +1,6 @@
+direct_23_july
+1800		//TIME
+40		//max_particle_size
+1.0		//h
+15		//num_smol
+1.		//dif_coef

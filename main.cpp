@@ -66,15 +66,8 @@ void solveMatrix (int n, double *a, double *c, double *b, double *f, double *x)
     }
 }
 
-void readData(double * data, int SIZE) {
+void readData(double * data, int SIZE, std::string inFileName) {
 
-
-    // 23 july direct 
-    std::string inFileName = "data/23_resampled.txt";
-    // 25 july direct
-    //std::string inFileName = "data/25_resampled.txt";
-    // 3 days direct
-    //std::string inFileName = "data/3_resampled.txt";
     std::ifstream inFile;
     inFile.open(inFileName.c_str());
 
@@ -93,61 +86,85 @@ void readData(double * data, int SIZE) {
     }
 }
 
+void fill_I(double * I, std::string name, int TIME)
+{
+    if (name == "smooth_23_july")
+    {
+        for (int i = 0; i < TIME/2; i++)
+        {
+            double value = ((double) i)/ ((double) (TIME/2-1));
+            I[i] = 2.5*sin(3.141592654*value/2.+3.141592654/2.) + 0.54037054444 + 2.28;
+        }
+        for (int i = TIME/2; i < TIME; i++)
+        {
+            double value = ((double) i-TIME/2)/ ((double) (TIME/2));
+            double value_x = value < 0.3 ? 0.3 : value;
+            I[i] = (value_x+0.5)*sin(value*9.0 + 2.4) + 2.28;
+        }
+    }
+    if (name == "direct_23_july")
+    {
+        readData(I, 800, "data/23july_resampled.txt");
+        readData(I+800, TIME-800, "data/23july_resampled.txt");
+    }
+    if (name == "smooth_25_july")
+    {
+        for (int i = 0; i < TIME/2; i++)
+        {
+            double value = ((double) i)/ ((double) (TIME/2-1));
+            I[i] = 1.*(sin(value*7*0.897597901+0.9)+2.);
+        }
+        for (int i = TIME/2; i < TIME; i++)
+        {
+            double value = ((double) i-TIME/2)/ ((double) (TIME/2));
+            I[i] = 1.*(sin(value*7*0.897597901+0.9)+2.);
+        }
+    }
+    if (name == "direct_25_july")
+    {
+        readData(I, TIME/2, "data/25july_resampled.txt");
+        readData(I+TIME/2, TIME/2, "data/25july_resampled.txt");
+    }
+    if (name == "3_days")
+    {
+        readData(I, TIME, "data/3days_resampled.txt");
+    }
+}
+
 int main(int argc, char ** argv)
 {
-    //res_baikal.txt
-    double h = 1.0; 
     double dt = 0.02;
     double J = 1.0;
-
-    //direct 23 july
-    //int TIME = 1800;
-    //25 july, smooth 23 july
-    int TIME = 2000;
-    //3 days
-    //int TIME = 8500;
-
     int MOD = 1;
     int X_MOD=10;
-    int max_particle_size = 40;
     int max_x = 200;
     double dx = 0.5;
 
-    //smooth 23 july
-    max_particle_size = 80;
-    h = 0.5;
+    std::string filename{argv[4]};
+    std::ifstream arguments;
+    arguments.open(filename);
+    std::vector<std::string> data;
+    std::string line;
+    int ii = 0;
+    while(getline(arguments, line))
+    {
+        data.push_back(line);
+        ii++;
+    }
+    
+    arguments.close();
+    std::string name = data[0];
+    int TIME = std::stoi(data[1]);
+    int max_particle_size = std::stoi(data[2]);
+    double h = std::stod(data[3]);
+    int num_smol = std::stoi(data[4]);
+    double dif_coef = std::stod(data[5]);
 
     double *I = new double[TIME];
-
-    //23 july direct
-    //readData(I, 800);
-    //readData(I+800, TIME-800);
-    //25 july direct
-    //readData(I, TIME/2);
-    //readData(I+TIME/2, TIME/2);
-    //3 days direct
-    //readData(I, TIME);
+    fill_I(I, name, TIME);
 
     std::ofstream check;
     check.open(argv[3]);
-
-    for (int i = 0; i < TIME/2; i++)
-    {
-        double value = ((double) i)/ ((double) (TIME/2-1));
-        //23 july smooth
-        I[i] = 2.5*sin(3.141592654*value/2.+3.141592654/2.) + 0.54037054444 + 2.28;
-        //25 july smooth
-        //I[i] = 1.*(sin(value*7*0.897597901+0.9)+2.);
-    }
-    for (int i = TIME/2; i < TIME; i++)
-    {
-        double value = ((double) i-TIME/2)/ ((double) (TIME/2));
-        //23 july smooth
-        double value_x = value < 0.3 ? 0.3 : value;
-        I[i] = (value_x+0.5)*sin(value*9.0 + 2.4) + 2.28;
-        //25 july smooth
-        //I[i] = 1.*(sin(value*7*0.897597901+0.9)+2.);
-    }
 
     double alpha = 25.0;
     double beta = 10.0;
@@ -174,9 +191,6 @@ int main(int argc, char ** argv)
     for (int m = 0; m < max_particle_size; m++)
     {
         vel_coefs[m] = 1.0*pow(h*(m+1), 2./3.);
-        double dif_coef = 1.;
-        //smooth 23 july
-        dif_coef = 1.5;
         dif_coefs[m] = dif_coef*pow(h*(m+1), -1./3.);
         
     }
@@ -215,7 +229,6 @@ int main(int argc, char ** argv)
         output.open(argv[1], std::ios_base::app);
         for (int i = 0; i < append*max_x; i++)
             input.ignore(stream_max, '\n');
-        std::string line;
         int cc = 0;
         while (std::getline(input, line)){
             std::vector<double> vec = split<double>(line);
@@ -232,11 +245,7 @@ int main(int argc, char ** argv)
     {
         if (t%MOD==0) cout << t << " ";
         if (t%MOD==0) cout << q[0] << " " << q[max_x/2] << " " << q[max_x-1] << endl;
-        //this is calculating coagulation
-        int mmm = 15;
-        //smooth 23 july
-        mmm = 6;
-        for (int numm = 0; numm < mmm; numm ++)
+        for (int numm = 0; numm < num_smol; numm ++)
         {
             for (int x = 0; x < max_x; x++)
             {
@@ -244,16 +253,16 @@ int main(int argc, char ** argv)
                 {
                     int ind = m+x*max_particle_size;
                     n_k[m] = initial_layer[ind];
-                    if (t%MOD==0 && x%X_MOD==0 && numm==mmm-1) output << initial_layer[ind] << " ";
+                    if (t%MOD==0 && x%X_MOD==0 && numm==num_smol-1) output << initial_layer[ind] << " ";
                 }
-                if (t%MOD==0 && x%X_MOD==0 && numm ==mmm-1) output << std::endl;
+                if (t%MOD==0 && x%X_MOD==0 && numm ==num_smol-1) output << std::endl;
             
                 //*****************DIRECT SOLUTION*****************
                 #pragma omp parallel for
                 for (int m = 0; m < max_particle_size; m++)
                 {
                     int ind = m+x*max_particle_size;
-            	    if (numm == mmm-1)
+            	    if (numm == num_smol-1)
             	    {
                         smoluch_operator[ind] = ( L1(max_particle_size,m,n_k,gamma*q[x], h)*0.5 - 
                                                   n_k[m]*L2(max_particle_size,m,n_k,gamma*q[x], h) )*dt+n_k[m];
@@ -325,14 +334,14 @@ int main(int argc, char ** argv)
                 coef_c[ind] = 1.0 + dt * ( dif_coefs[m] * exp(vel_coefs[m]/dif_coefs[m]*dx/2.0) + dif_coefs[m] * exp(-vel_coefs[m]/dif_coefs[m]*dx/2.0) ) / (dx*dx);
                 coef_a[ind] = - dt * dif_coefs[m] * exp(vel_coefs[m]/dif_coefs[m]*dx/2.0) / (dx*dx);
             }
-            coef_b[0 + m*max_x] = 1.0;
 
+            coef_b[0 + m*max_x] = 1.0;
             coef_b[(max_x-1) + m*max_x] = 0.0;
+
             coef_a[0 + m*max_x] = 0.0;
             coef_a[(max_x-1) + m*max_x] = 0.0;
 
             coef_c[0 + m*max_x] = -1.0;
-
             coef_c[(max_x-1) + m*max_x] = 1.0;
         }
     }

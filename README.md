@@ -1,40 +1,31 @@
-## Код для решения задачи протранственно-неоднородной коагуляции в одномерном пространстве и с источником мономеров.
+## Code for solving spatially heterogeneous coagulation problem sets in 1D with the source of monomers.
 
-Источник мономеров на левой границе позволяет нам говорить о стационарном решении
+The monomer source at the left boundary allows us to study the stationary solution
 
-* Параметры:
-`h` - шаг по размерам частиц, 
-`dt` - шаг по времени, 
-`J` - величина источника, 
-`TIME` - общее количество итераций, 
-`MOD` - периодичность, с которой расчеты записываются в файлик, 
-`max_particle_size` - общее количество разбиений по размерам частиц, 
-`max_x` - общее количество разбиений по пространственной координате, 
-`dx` - шаг по пространству, 
-`vel_coefs` - массив коэффициентов переноса для разных размеров частиц, 
-`dif_coefs` - массив коэффициентов диффузии для разных размеров частиц, 
-`initial_layer` - массив с начальным условием (по дефолту нулевое).
+* Parameters:
+`h` - particle size step, 
+`dt` - time step, 
+`J` - strength of the source, 
+`TIME` - total number of iterations, 
+`MOD` - data dump periodicity, 
+`max_particle_size` - total number of particle sizes, 
+`max_x` - total number of space steps, 
+`dx` - space step, 
+`vel_coefs` - array of advection coefficients, 
+`dif_coefs` - array of diffusion coefficients, 
+`initial_layer` - array with the initial condition (default is zero).
 
-* Источник мономеров задается в виде граничного условия в файле __main.cpp__ (см строку **276** - `rhs`). Также см. строки **303-311** (там указаны коэффициенты первой и последней строки трехдиагональной матрицы, можно сделать условие Дирихле, Неймана и т.д. Видим, что слева `[0+m*max_x]` - условие Неймана, а справа `[(max_x-1)+m*max_x]` - условие Дирихле.
+* Monomer source is presented as a boundary condition in the file __main.cpp__ (line **290** - `rhs`). Also see lines **338-345** (this shows the values of the first and the last rows of tridiagonal matrix. Using it we can set different boundary condtition types, e.g. Neumann on the left: `[0+m*max_x]` and Dirichlet on the right: `[(max_x-1)+m*max_x]`.
 
-* Как записываются данные в файл. Каждые `MOD` итераций по времени происходит запись. Записываются `max_particle_size` значений (строка **229** в файле __main.cpp__), затем переходим на новую строку (строка **231** в файле __main.cpp__). В итоге получается матрица размером `max_particle_size` на `TIME/MOD * max_x`. Эти данные можно прочесть в питоне и сделать `.reshape` (см. файл __draw_article.ipynb__).
+* Data is dumped every `MOD` iterations in time. See file __baikal_plots.ipynb__. It shows how the data is read using Python.
 
-* В коде есть примеры 4 запусков:
-1. res_diff - случай с только с константной диффузией без переноса и константным ядром коагуляции.
-2. res_adv - случай с констнатными коэффициентами диффузии и переноса и константным ядром коагуляции.
-3. res_full - случай с переменными коэффциентами диффузии и переноса и простым ядром со степенью однородности $\frac{4}{3}$.
-4. res_ballistic - случай с переменными коэффциентами диффузии и переноса и баллистическим ядром.
+* The repository includes 5 configuration files (__configs__ folder):
+0. model on July 23rd with smooth ozone source
+1. model on July 23rd with direct ozone source
+2. model on July 25th with smooth ozone source
+3. model on July 25rd with direct ozone source
+4. countinuous 72 hour model from July 23rd to July 26th with direct ozone source
 
-Чтобы сделать нужный запуск закомментите ненужное и разкомментите нужное в файлах __main.cpp__ (строки **65**-**114**, **149**-**165**, **279**) и в файле __wrappers.cpp__ (строки **9**-**24**).
+To launch the necessary simulation pass the respective configuration file as the command line argument to the executive file.
 
-* Оператор коагуляции можно вычислять напрямую (**255**-**265**) либо через преобразование Фурье (**234**-**253**). Файл __main.cpp__.
-
-* в библиотеке есть зависимости от __blas__, __lapack__ и __fftw3__. Но если запускать без малорангового разложения ядра коагуляции можно от этих зависимостей избавиться. Но вам нужно будет самим убирать ненужные `#include`'ы, убрать вызовы `crossed_kernel`, `fftw`... и поправить мейкфайл. Если нужна будет помощь то пишите. Если в лом, то можно просто установить себе эти три библиотеки. Если хотите запускать на Жоресе, то воспользуйтесь файлом `Makefile_zhores`. При этом нужно предварительно сделать `module load` следующих библиотек:
-1) `compilers/intel_2020.2.254`, 
-2) `compilers/fftw-3.3.8`, 
-3) `intel/mkl/2020`, 
-4) `intel/2020`, 
-
-* Аргументы командной строки. Например, если запускать код командой `solver.exe output.txt 0`, то появится файл __output.txt__ куда будут записываться данные. Если запускать командой `solver.exe output.txt 5` то код предполагает что файл __output.txt__ уже существует и там уже успелось записаться 6 итераций по времени. Тогда код первые 5 итераций пропускает и считывает шестую итерацию как начальное условие и продолжает расчеты.
-
-* В бранче про Байкал, есть доп аргумент командной строки - файл, куда записывается динамика концетрации озона. Пример: `solver.exe output.txt 0 I.txt`
+* Command line arguments. For instance, if one launches the executable with `solver.exe output.txt 0 I.txt configs/input_1.txt`, then __output.txt__ file will apprear with the aerosol data and __I.txt__ with the ozone data. The configurations will be taken from __configs/input_1.txt__.
