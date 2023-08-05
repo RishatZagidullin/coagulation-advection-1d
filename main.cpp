@@ -62,56 +62,13 @@ void solveMatrix (int n, double *a, double *c, double *b, double *f, double *x)
 
 int main(int argc, char ** argv)
 {
-    /*
-    //res_full.txt
-
-    double h = 1.0; 
-    double dt = 0.01;
-    double J = 1.0;
-    int TIME = 20001;
-    int MOD = 2000;
-    int max_particle_size = 256;
-    int max_x = 5000;
-    double dx = 0.02;
-    */
-
-    /*
-    //res_ballistic.txt
-
-    double h = 1.0; 
-    double dt = 0.001;
-    double J = 1.0;
-    int TIME = 50001;
-    int MOD = 5000;
-    int max_particle_size = 256;
-    int max_x = 5000;
-    double dx = 0.02;
-    */
-
-    /*
-    //res_adv.txt
-    
-    double h = 1.0; 
-    double dt = 0.1;
-    double J = 1.0;
-    int TIME = 5001; 
-    int MOD = 500;
-    int max_particle_size = 128;
-    int max_x = 1000;
-    double dx = 0.2;
-    */
-
-    //res_diff.txt
-    ///*
-    double h = 1.0;
-    double dt = 0.2;
-    double J = 1.0;
-    int TIME = 2001; 
-    int MOD = 200;
-    int max_particle_size = 256;
-    int max_x = 500;
-    double dx = 0.4;
-    //*/
+    double h = 0.1;
+    double dt = 0.005;
+    int TIME = 80; 
+    int MOD = 20;
+    int max_particle_size = 100;
+    int max_x = 100;
+    double dx = 0.05;
 
     double tolerance = 1e-3;    			
     TCross_Parallel_v1 crossed_kernel = default_crossed_kernel(tolerance, max_particle_size, h);		
@@ -146,24 +103,8 @@ int main(int argc, char ** argv)
 
     for (int m = 0; m < max_particle_size; m++)
     {
-        ///*
-        //res_diff.txt
-        vel_coefs[m] = 0.0;
-        dif_coefs[m] = 1.0;
-        //*/
-
-        /*
-        //res_adv.txt
-        vel_coefs[m] = 1.0;
-        dif_coefs[m] = 1.0;
-        */
-
-        /*
-        //res_full.txt or res_ballistic.txt
-        vel_coefs[m] = 1.0*pow(m+1, 2./3.);
-        dif_coefs[m] = 1.0*pow(m+1, -1./3.);
-        */
-        
+        vel_coefs[m] = 10.0;// /((m+10)*h);//10.0;
+        dif_coefs[m] = 0.2;
     }
     double *coef_a = new double [max_x * max_particle_size];
     double *coef_b = new double [max_x * max_particle_size];
@@ -179,13 +120,13 @@ int main(int argc, char ** argv)
             coef_a[ind] = - dt * dif_coefs[m] * exp(vel_coefs[m]/dif_coefs[m]*dx/2.0) / (dx*dx);
         }
 
-        coef_b[0 + m*max_x] = 1.0;
+        coef_b[0 + m*max_x] = 0.0;
 
         coef_b[(max_x-1) + m*max_x] = 0.0;
         coef_a[0 + m*max_x] = 0.0;
         coef_a[(max_x-1) + m*max_x] = 0.0;
 
-        coef_c[0 + m*max_x] = -1.0;
+        coef_c[0 + m*max_x] = 1.0;
 
         coef_c[(max_x-1) + m*max_x] = 1.0;
     }
@@ -254,7 +195,7 @@ int main(int argc, char ** argv)
             
             //*****************DIRECT SOLUTION*****************
             ///*
-            #pragma omp parallel for
+            //#pragma omp parallel for
             for (int m = 0; m < max_particle_size; m++)
             {
             	int ind = m+x*max_particle_size;
@@ -266,17 +207,14 @@ int main(int argc, char ** argv)
         }
 
         //this is part calculating advection
-        #pragma omp parallel for
+        //#pragma omp parallel for
         for (int m = 0; m < max_particle_size; m++)
         {
             double * rhs = new double [max_x];
             for (int x = 0; x < max_x; x++)
             {
                 rhs[x] = smoluch_operator[m+x*max_particle_size];
-                if (m==0 && x==0) rhs[x] = -J*dx*0.5;
-                
-                //uncomment this line if res_diff.txt else comment it
-                else if (x==0) rhs[x] = 0.0;
+                if (x==0) rhs[x] = exp(-pow(m*h,1));
             }
             double * output = new double [max_x];
             solveMatrix (max_x, &coef_a[m*max_x], &coef_c[m*max_x], &coef_b[m*max_x], rhs, output);
@@ -290,7 +228,7 @@ int main(int argc, char ** argv)
         }
 
         //this is part of calculating advection
-        #pragma omp parallel for
+        //#pragma omp parallel for
         for (int m = 0; m < max_particle_size; m++)
         {
             for (int x = 0; x < max_x; x++)
@@ -300,13 +238,13 @@ int main(int argc, char ** argv)
                 coef_c[ind] = 1.0 + dt * ( dif_coefs[m] * exp(vel_coefs[m]/dif_coefs[m]*dx/2.0) + dif_coefs[m] * exp(-vel_coefs[m]/dif_coefs[m]*dx/2.0) ) / (dx*dx);
                 coef_a[ind] = - dt * dif_coefs[m] * exp(vel_coefs[m]/dif_coefs[m]*dx/2.0) / (dx*dx);
             }
-            coef_b[0 + m*max_x] = 1.0;
+            coef_b[0 + m*max_x] = 0.0;
 
             coef_b[(max_x-1) + m*max_x] = 0.0;
             coef_a[0 + m*max_x] = 0.0;
             coef_a[(max_x-1) + m*max_x] = 0.0;
 
-            coef_c[0 + m*max_x] = -1.0;
+            coef_c[0 + m*max_x] = 1.0;
 
             coef_c[(max_x-1) + m*max_x] = 1.0;
         }    
