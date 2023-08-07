@@ -88,7 +88,7 @@ int main(int argc, char ** argv)
     double dx = 0.02;
     */
 
-    /*
+    ///*
     //res_adv.txt
     
     double h = 1.0; 
@@ -99,19 +99,19 @@ int main(int argc, char ** argv)
     int max_particle_size = 128;
     int max_x = 1000;
     double dx = 0.2;
-    */
+    //*/
 
     //res_diff.txt
-    ///*
+    /*
     double h = 1.0;
     double dt = 0.2;
     double J = 1.0;
-    int TIME = 2001; 
+    int TIME = 1801; 
     int MOD = 200;
     int max_particle_size = 256;
-    int max_x = 500;
-    double dx = 0.4;
-    //*/
+    int max_x = 1000;
+    double dx = 0.2;
+    */
 
     double tolerance = 1e-3;    			
     TCross_Parallel_v1 crossed_kernel = default_crossed_kernel(tolerance, max_particle_size, h);		
@@ -146,17 +146,17 @@ int main(int argc, char ** argv)
 
     for (int m = 0; m < max_particle_size; m++)
     {
-        ///*
+        /*
         //res_diff.txt
         vel_coefs[m] = 0.0;
         dif_coefs[m] = 1.0;
-        //*/
+        */
 
-        /*
+        ///*
         //res_adv.txt
         vel_coefs[m] = 1.0;
         dif_coefs[m] = 1.0;
-        */
+        //*/
 
         /*
         //res_full.txt or res_ballistic.txt
@@ -276,7 +276,7 @@ int main(int argc, char ** argv)
                 if (m==0 && x==0) rhs[x] = -J*dx*0.5;
                 
                 //uncomment this line if res_diff.txt else comment it
-                else if (x==0) rhs[x] = 0.0;
+                //else if (x==0) rhs[x] = 0.0;
             }
             double * output = new double [max_x];
             solveMatrix (max_x, &coef_a[m*max_x], &coef_c[m*max_x], &coef_b[m*max_x], rhs, output);
