@@ -159,7 +159,7 @@ int main(int argc, char ** argv)
     double h = std::stod(data[3]);
     int num_smol = std::stoi(data[4]);
     double dif_coef = std::stod(data[5]);
-
+    std::cout << name << " " << TIME << " " << max_particle_size << " " << h << " " << num_smol << " " << dif_coef << "\n";
     double *I = new double[TIME];
     fill_I(I, name, TIME);
 
