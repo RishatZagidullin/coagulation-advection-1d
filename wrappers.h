@@ -14,5 +14,6 @@ using namespace std;
 namespace wrappers
 {
     double K(const int & u, const int &v, const double h);
+    double K_appendix(const int & u, const int &v, const double h);
 }
 

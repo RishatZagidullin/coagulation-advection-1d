@@ -26,5 +26,24 @@ namespace wrappers
         //double result = 2.0;
         return 1.*result;
     }
+
+    double K_appendix(const int & u, const int &v, const double h)
+    {
+        
+        double u1=pow( (u + 1.0)*h , 1.0/3.0);
+        double v1=pow( (v + 1.0)*h , 1.0/3.0);
+        double result = 0.0;
+
+        //het kernel
+        //if (u==v)
+        //    result = (u1+v1)*(1./u1+1./v1);
+        //else
+        //    result = pow((u1+v1), 2)*fabs(u1*u1-v1*v1);
+
+        //hom kernel
+        result = (u1+v1)*(1./u1+1./v1);
+
+        return 1.*result;
+    }
 }
 

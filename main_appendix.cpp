@@ -21,28 +21,28 @@ std::vector<T> split(const std::string& line) {
 }
 
 //solve first Smoluchowski integral
-double L1(const int &N, const int &i, const double *n, double gamma_q, double h)
+double L1(const int &N, const int &i, const double *n, double h)
 {
     double l1 = 0;
     for (int i1 = 0; i1 < i; i1++)
     {
-        double val = n[i1] * n[i-i1-1] * wrappers::K((i-i1-1), i1, h);
-        if ((i-i1-1) != i1)
-            val *= pow(1.0 + gamma_q, 5./3.);
+        double val = n[i1] * n[i-i1-1] * wrappers::K_appendix((i-i1-1), i1, h);
+        //if ((i-i1-1) != i1)
+        //    val *= pow(1.0 + gamma_q, 5./3.);
         l1 += val;
     }
     return l1;
 }
 
 //solve second Smoluchowski integral
-double L2(const int &N, const int &i, const double *n, double gamma_q, double h)
+double L2(const int &N, const int &i, const double *n, double h)
 {
     double l2 = 0;
     for (int i1 = 0; i1 < N; i1++)
     {
-        double val = n[i1] * wrappers::K(i, i1, h);
-        if (i != i1)
-            val *= pow(1.0 + gamma_q, 5./3.);
+        double val = n[i1] * wrappers::K_appendix(i, i1, h);
+        //if (i != i1)
+        //    val *= pow(1.0 + gamma_q, 5./3.);
         l2 += val;
     }
     return l2;
@@ -90,14 +90,25 @@ void fill_I(double * I, std::string name, int TIME)
 {
     if (name == "smooth_23_july")
     {
-        for (int i = 0; i < TIME/2; i++)
+        for (int i = 0; i < TIME/4; i++)
         {
-            double value = ((double) i)/ ((double) (TIME/2-1));
+            double value = ((double) i)/ ((double) (TIME/4-1));
             I[i] = 2.5*sin(3.141592654*value/2.+3.141592654/2.) + 0.54037054444 + 2.28;
         }
-        for (int i = TIME/2; i < TIME; i++)
+        for (int i = TIME/4; i < TIME/2; i++)
         {
-            double value = ((double) i-TIME/2)/ ((double) (TIME/2));
+            double value = ((double) i-TIME/4)/ ((double) (TIME/4-1));
+            double value_x = value < 0.3 ? 0.3 : value;
+            I[i] = (value_x+0.5)*sin(value*9.0 + 2.4) + 2.28;
+        }
+        for (int i = TIME/2; i < 3*TIME/4; i++)
+        {
+            double value = ((double) i-TIME/2)/ ((double) (TIME/4-1));
+            I[i] = 2.5*sin(3.141592654*value/2.+3.141592654/2.) + 0.54037054444 + 2.28;
+        }
+        for (int i = 3*TIME/4; i < TIME; i++)
+        {
+            double value = ((double) i-3*TIME/4)/ ((double) (TIME/4-1));
             double value_x = value < 0.3 ? 0.3 : value;
             I[i] = (value_x+0.5)*sin(value*9.0 + 2.4) + 2.28;
         }
@@ -109,14 +120,24 @@ void fill_I(double * I, std::string name, int TIME)
     }
     if (name == "smooth_25_july")
     {
-        for (int i = 0; i < TIME/2; i++)
+        for (int i = 0; i < TIME/4; i++)
         {
             double value = ((double) i)/ ((double) (TIME/2-1));
             I[i] = 1.*(sin(value*7*0.897597901+0.9)+2.);
         }
-        for (int i = TIME/2; i < TIME; i++)
+        for (int i = TIME/4; i < TIME/2; i++)
         {
-            double value = ((double) i-TIME/2)/ ((double) (TIME/2));
+            double value = ((double) i-TIME/4)/ ((double) (TIME/4-1));
+            I[i] = 1.*(sin(value*7*0.897597901+0.9)+2.);
+        }
+        for (int i = TIME/2; i < 3*TIME/4; i++)
+        {
+            double value = ((double) i-TIME/2)/ ((double) (TIME/4-1));
+            I[i] = 1.*(sin(value*7*0.897597901+0.9)+2.);
+        }
+        for (int i = 3*TIME/4; i < TIME; i++)
+        {
+            double value = ((double) i-3*TIME/4)/ ((double) (TIME/4-1));
             I[i] = 1.*(sin(value*7*0.897597901+0.9)+2.);
         }
     }
@@ -134,10 +155,9 @@ void fill_I(double * I, std::string name, int TIME)
 int main(int argc, char ** argv)
 {
     double dt = 0.02;
-    double J = 1.0;
     int MOD = 1;
     int X_MOD=10;
-    int max_x = 200;
+    int max_x = 1;//200;
     double dx = 0.5;
 
     std::string filename{argv[4]};
@@ -158,6 +178,7 @@ int main(int argc, char ** argv)
     int max_particle_size = std::stoi(data[2]);
     double h = std::stod(data[3]);
     int num_smol = std::stoi(data[4]);
+    //num_smol = 6;
     double dif_coef = std::stod(data[5]);
     std::cout << name << " " << TIME << " " << max_particle_size << " " << h << " " << num_smol << " " << dif_coef << "\n";
     double *I = new double[TIME];
@@ -166,19 +187,11 @@ int main(int argc, char ** argv)
     std::ofstream check;
     check.open(argv[3]);
 
-    double alpha = 25.0;
-    double beta = 10.0;
-    double kai = 8.0;
-    double gamma = 2.0;
-    double q_max = 60.0;
-    double ksi = 10.0;
+    double alpha = 1.;
+    double beta = 0.0001;
+    double C_oz = 0.0;
+    int k_max = 40;
 
-    double ozone_coef = 5.;
-    double *ozone_scale = new double[max_x];
-
-    double *ozone = new double[max_x];
-    
-    double *q = new double[max_x];
 
     double *n_k;
     double *L1_res_vec, *L2_res_vec;
@@ -186,19 +199,20 @@ int main(int argc, char ** argv)
 
 
     double *initial_layer = new double [max_particle_size * max_x];
-    double *smoluch_operator = new double [max_particle_size * max_x];
 
     double *vel_coefs = new double [max_particle_size];
     double *dif_coefs = new double [max_particle_size];
 
-    for (int x = 0; x < max_x; x++)
-    {
-        ozone_scale[x] = 2.*exp(-0.05*(dx*x));
-    }
     for (int m = 0; m < max_particle_size; m++)
     {
         vel_coefs[m] = 1.0*pow(h*(m+1), 2./3.);
         dif_coefs[m] = dif_coef*pow(h*(m+1), -1./3.);
+        n_k[m] = 0.0;
+        for (int x = 0; x < max_x; x++)
+        {
+            initial_layer[m+x*max_particle_size] = 0.0;
+        }
+        
     }
     double *coef_a = new double [max_x * max_particle_size];
     double *coef_b = new double [max_x * max_particle_size];
@@ -249,8 +263,7 @@ int main(int argc, char ** argv)
     int count = -1;
     for (int t = 0; t < TIME; t++)
     {
-        if (t%MOD==0) cout << t << " ";
-        if (t%MOD==0) cout << ozone[0] << " " << ozone[max_x/2] << " " << ozone[max_x-1] << endl;
+        //if (t%MOD==0) cout << t << " ";
         for (int numm = 0; numm < num_smol; numm ++)
         {
             for (int x = 0; x < max_x; x++)
@@ -259,100 +272,52 @@ int main(int argc, char ** argv)
                 {
                     int ind = m+x*max_particle_size;
                     n_k[m] = initial_layer[ind];
-                    if (t%MOD==0 && x%X_MOD==0 && numm==num_smol-1) output << initial_layer[ind] << " ";
                 }
-                if (t%MOD==0 && x%X_MOD==0 && numm ==num_smol-1) output << std::endl;
             
                 //*****************DIRECT SOLUTION*****************
                 #pragma omp parallel for
                 for (int m = 0; m < max_particle_size; m++)
                 {
                     int ind = m+x*max_particle_size;
-            	    if (numm == num_smol-1)
-            	    {
-                        smoluch_operator[ind] = ( L1(max_particle_size,m,n_k,gamma*q[x], h)*0.5 - 
-                                                  n_k[m]*L2(max_particle_size,m,n_k,gamma*q[x], h) )*dt+n_k[m];
-                        if (smoluch_operator[ind] < 0.0) smoluch_operator[ind] = 0.0;
-                    }
-                    else
-                    {
-                        initial_layer[ind] = ( L1(max_particle_size,m,n_k,gamma*q[x], h)*0.5 - 
-                                               n_k[m]*L2(max_particle_size,m,n_k,gamma*q[x], h) )*dt+n_k[m];
-                        if (initial_layer[ind] < 0.0) initial_layer[ind] = 0.0;
-                    }
+                    initial_layer[ind] = ( L1(max_particle_size,m,n_k, h)*0.5 - 
+                                           n_k[m]*L2(max_particle_size,m,n_k, h) )*dt+n_k[m];
+                    if (initial_layer[ind] < 0.0) initial_layer[ind] = 0.0;
                 }
+                for (int m = 0; m < max_particle_size; m++)
+                {
+                    int ind = m+x*max_particle_size;
+                    if (t%MOD==0 && x%X_MOD==0 && numm==num_smol-1) output << initial_layer[ind] << " ";
+                }
+                if (t%MOD==0 && x%X_MOD==0 && numm ==num_smol-1) output << std::endl;
                 //*************************************************
             }
         }
 
-        //this is part calculating advection
-        #pragma omp parallel for
-        for (int m = 0; m < max_particle_size; m++)
-        {
-            double * rhs = new double [max_x];
-            for (int x = 0; x < max_x; x++)
-            {
-                rhs[x] = smoluch_operator[m+x*max_particle_size];
-                if (m==0 && x==0) rhs[x] = -(ozone_coef*ozone[x])*dx*0.5;
-            }
-            double * output = new double [max_x];
-            solveMatrix (max_x, &coef_a[m*max_x], &coef_c[m*max_x], &coef_b[m*max_x], rhs, output);
-            
-            for (int x = 0; x < max_x; x++)
-            {
-                initial_layer[m+x*max_particle_size] = output[x];
-                if (initial_layer[m+x*max_particle_size] < 0.0) initial_layer[m+x*max_particle_size] = 0.0;
-            }
-            delete [] output;
-            delete [] rhs;
-        }
-
         //modelling Baikal data
+        double member = beta*C_oz;
+        C_oz = C_oz + dt*(I[t]-alpha*C_oz-member);
+        if (C_oz < 0) C_oz = 0.0;
+        
         for (int x = 0; x < max_x; x++)
         {
+            if (t%MOD==0 && x==0) check << C_oz << " ";
             double sums = 0.0;
-            for (int m = 0; m < max_particle_size; m++)
+            for (int m = 0; m < k_max; m++)
             {
-                sums += initial_layer[m+x*max_particle_size]*pow((m+1)*h, 2./3.);
+                sums +=wrappers::K_appendix(0, m, h) *
+                            initial_layer[m+x*max_particle_size] * 
+                            initial_layer[0+x*max_particle_size];
             }
-            ozone[x] = ozone[x]+dt*(ozone_scale[x]*I[t]-alpha*ozone[x]-beta*sums*ozone[x]);
-            if (t%MOD==0 && x%X_MOD==0) check << ozone[x] << " ";
-            if (ozone[x] < 0.0)
-                ozone[x] = 0.0;
-            q[x] = q[x]+dt*(kai*ozone[x]*(q_max-q[x])*(q[x]>=q_max?0.:1)-ksi*q[x]);
-
-            if (sums < 0 || q[x] > 100)
-                return 0;
-            if (q[x] < 0.0)
-                q[x] = 0.0;
+            initial_layer[0+x*max_particle_size] = 
+                              initial_layer[0+x*max_particle_size] + 
+                                          dt*(member - sums);
+            //std::cout << initial_layer[0+x*max_particle_size] << " " << sums << " " << member << "\n";
+            if (initial_layer[0+x*max_particle_size] < 0.0) initial_layer[0+x*max_particle_size] = 0.0;
         }
         if (t%MOD==0) check << "\n";
         //************************
-
-        //this is part of calculating advection
-        #pragma omp parallel for
-        for (int m = 0; m < max_particle_size; m++)
-        {
-            for (int x = 0; x < max_x; x++)
-            {
-                int ind = x + m * max_x;
-                coef_b[ind] = - dt * dif_coefs[m] * exp(-vel_coefs[m]/dif_coefs[m]*dx/2.0) / (dx*dx);
-                coef_c[ind] = 1.0 + dt * ( dif_coefs[m] * exp(vel_coefs[m]/dif_coefs[m]*dx/2.0) + dif_coefs[m] * exp(-vel_coefs[m]/dif_coefs[m]*dx/2.0) ) / (dx*dx);
-                coef_a[ind] = - dt * dif_coefs[m] * exp(vel_coefs[m]/dif_coefs[m]*dx/2.0) / (dx*dx);
-            }
-
-            coef_b[0 + m*max_x] = 1.0;
-            coef_b[(max_x-1) + m*max_x] = 0.0;
-
-            coef_a[0 + m*max_x] = 0.0;
-            coef_a[(max_x-1) + m*max_x] = 0.0;
-
-            coef_c[0 + m*max_x] = -1.0;
-            coef_c[(max_x-1) + m*max_x] = 1.0;
-        }
     }
 
-    delete [] smoluch_operator;
     delete [] initial_layer;
     delete [] n_k;
     delete [] vel_coefs;
@@ -360,8 +325,6 @@ int main(int argc, char ** argv)
     delete [] coef_a;
     delete [] coef_b;
     delete [] coef_c;
-    delete [] q;
-    delete [] ozone;
     delete [] I;
 
     output.close();
